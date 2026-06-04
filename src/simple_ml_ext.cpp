@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <cmath>
+#include <vector>
 #include <iostream>
 
 namespace py = pybind11;
@@ -33,6 +34,45 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
+    std::vector<float> Z(batch * k);
+    for (size_t i = 0; i < m; i += batch) {
+        size_t batch_size = std::min(batch, m-i);
+        float *batch_X = X + i * n; //batch*n
+        unsigned char *batch_y = y + i;
+
+        
+        for (size_t b = 0; b < batch_size; b++) {
+            for (size_t col = 0; col < k; col++) {
+                Z[b * k + col] = 0;
+                for (size_t j = 0; j < n; j++) {
+                    Z[b * k + col] += X[(i + b) * n + j] * theta[j * k + col];
+                }
+            }
+        }
+
+        for (size_t b = 0; b < batch_size; b++) {
+            float row_sum = 0;
+            for (size_t col = 0; col < k; col++) {
+                Z[b * k + col] = std::exp(Z[b * k + col]);
+                row_sum += Z[b * k + col];
+            }
+            for (size_t col = 0; col < k; col++) {
+                Z[b * k + col] /= row_sum;
+            }
+        }
+        
+        for (size_t j=0; j < n; j++) {
+            for (size_t col = 0; col < k; col++) {
+                float grad = 0;
+                for (size_t b = 0; b < batch_size; b++) {
+                    float hy = Z[b * k + col];
+                    if (y[i + b] == col) hy -= 1.0f;
+                    grad += X[(i + b) * n + j] * hy;
+                }
+                theta[j * k + col] -= lr * grad / batch_size;
+            }
+        }
+    }
 
     /// END YOUR CODE
 }
